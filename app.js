@@ -1,15 +1,11 @@
+var express = require('express'),
+    app = express(),
+    server = require('http').createServer(app),
+    io = require('socket.io').listen(server),
+    path = require('path'),
+    routes = require('./routes');
 
-/**
- * Module dependencies.
- */
-
-var express = require('express')
-  , routes = require('./routes')
-  , user = require('./routes/user')
-  , http = require('http')
-  , path = require('path');
-
-var app = express();
+server.listen(3000);
 
 app.configure(function(){
   app.set('port', process.env.PORT || 3000);
@@ -28,8 +24,33 @@ app.configure('development', function(){
 });
 
 app.get('/', routes.index);
-app.get('/users', user.list);
 
-http.createServer(app).listen(app.get('port'), function(){
-  console.log("Express server listening on port " + app.get('port'));
+
+io.sockets.on('connection', function(socket){
+    console.log('User connected: ' + socket.id);
+
+    sendRoomList(socket);
+    console.log('Sent room list');
+
+    socket.on('createNewRoom', function(){
+        var roomName = socket.id + "'s Room";
+        socket.join(roomName);
+        console.log('Created new room: ' + roomName);
+
+        sendRoomList(socket);
+        console.log(io.sockets.manager.rooms);
+
+
+    })
+
+    socket.on('joinRoom', function(room){
+        socket.join(room);
+        console.log('Joined room: ' + room);
+    });
 });
+
+function sendRoomList(socket){
+    var rooms = io.sockets.manager.rooms;
+    socket.emit('roomList', rooms);
+    console.log('Sent room list');
+}
